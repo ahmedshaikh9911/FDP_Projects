@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
   <title>Merge Sort Visualizer</title>
-  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@700;900&display=swap" rel="stylesheet"/>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -19,7 +19,6 @@
       --accent:    #ff6b35;
       --accent-dim:#ff6b3530;
       --blue:      #38bdf8;
-      --blue-dim:  #38bdf830;
       --text:      #e2e8f0;
       --muted:     #64748b;
       --compare:   #facc15;
@@ -27,75 +26,59 @@
       --sorted:    #00ff88;
     }
 
-    html, body {
-      height: 100%;
+    html { font-size: 16px; }
+    body {
+      min-height: 100dvh;
       background: var(--bg);
       color: var(--text);
       font-family: 'Share Tech Mono', monospace;
       overflow-x: hidden;
     }
 
-    /* Scanline overlay */
+    /* scanline */
     body::before {
       content: '';
       position: fixed; inset: 0;
-      background: repeating-linear-gradient(
-        0deg,
-        transparent,
-        transparent 2px,
-        rgba(0,0,0,0.07) 2px,
-        rgba(0,0,0,0.07) 4px
-      );
-      pointer-events: none;
-      z-index: 999;
+      background: repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.06) 2px,rgba(0,0,0,.06) 4px);
+      pointer-events: none; z-index: 999;
     }
-
-    /* Grid noise background */
+    /* grid */
     body::after {
       content: '';
       position: fixed; inset: 0;
       background-image:
-        linear-gradient(rgba(0,255,136,0.03) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(0,255,136,0.03) 1px, transparent 1px);
-      background-size: 40px 40px;
-      pointer-events: none;
-      z-index: 0;
+        linear-gradient(rgba(0,255,136,.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,255,136,.025) 1px, transparent 1px);
+      background-size: 36px 36px;
+      pointer-events: none; z-index: 0;
     }
 
     .wrapper {
-      position: relative;
-      z-index: 1;
+      position: relative; z-index: 1;
       max-width: 1100px;
       margin: 0 auto;
-      padding: 32px 20px 60px;
+      padding: 20px 14px 60px;
     }
 
     /* ── Header ── */
-    header {
-      text-align: center;
-      margin-bottom: 36px;
-    }
+    header { text-align: center; margin-bottom: 24px; }
+
     .title-badge {
-      display: inline-block;
       font-family: 'Orbitron', monospace;
-      font-size: clamp(1.6rem, 4vw, 2.8rem);
+      font-size: clamp(1.35rem, 5.5vw, 2.6rem);
       font-weight: 900;
-      letter-spacing: 0.08em;
+      letter-spacing: .07em;
       color: var(--neon);
       text-shadow: var(--neon-glow);
-      position: relative;
     }
-    .title-badge::after {
-      content: '_';
-      animation: blink 1s step-end infinite;
-    }
+    .title-badge::after { content: '_'; animation: blink 1s step-end infinite; }
     @keyframes blink { 50% { opacity: 0; } }
 
     .subtitle {
       color: var(--muted);
-      font-size: 0.78rem;
-      letter-spacing: 0.15em;
-      margin-top: 6px;
+      font-size: clamp(.6rem, 2.5vw, .75rem);
+      letter-spacing: .14em;
+      margin-top: 4px;
     }
 
     /* ── Control Panel ── */
@@ -103,24 +86,22 @@
       background: var(--panel);
       border: 1px solid var(--border);
       border-radius: 8px;
-      padding: 20px 24px;
-      margin-bottom: 24px;
-      display: grid;
-      grid-template-columns: 1fr auto auto auto;
-      gap: 16px;
-      align-items: end;
-    }
-    @media (max-width: 700px) {
-      .control-panel { grid-template-columns: 1fr 1fr; }
+      padding: 16px;
+      margin-bottom: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
     }
 
-    .field label {
+    .field label,
+    .row-label {
       display: block;
-      font-size: 0.7rem;
-      letter-spacing: 0.12em;
+      font-size: clamp(.6rem, 2.4vw, .68rem);
+      letter-spacing: .12em;
       color: var(--muted);
-      margin-bottom: 6px;
+      margin-bottom: 5px;
     }
+
     .field input {
       width: 100%;
       background: var(--surface);
@@ -128,10 +109,11 @@
       border-radius: 4px;
       color: var(--text);
       font-family: 'Share Tech Mono', monospace;
-      font-size: 0.9rem;
-      padding: 9px 12px;
+      font-size: clamp(.78rem, 3vw, .9rem);
+      padding: 10px 12px;
       outline: none;
-      transition: border-color 0.2s, box-shadow 0.2s;
+      transition: border-color .2s, box-shadow .2s;
+      -webkit-appearance: none;
     }
     .field input:focus {
       border-color: var(--neon);
@@ -139,89 +121,119 @@
     }
     .field input::placeholder { color: var(--muted); }
 
-    /* Sort toggle */
-    .toggle-wrap label {
-      display: block;
-      font-size: 0.7rem;
-      letter-spacing: 0.12em;
-      color: var(--muted);
-      margin-bottom: 6px;
-    }
-    .toggle-btn {
+    /* second row: toggle + speed + buttons */
+    .ctrl-row {
       display: flex;
-      align-items: center;
-      gap: 8px;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: flex-end;
+    }
+
+    /* toggle */
+    .toggle-wrap { flex: 0 0 auto; }
+    .toggle-btn {
+      display: flex; align-items: center; gap: 6px;
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: 4px;
-      padding: 8px 14px;
+      padding: 0 14px;
+      height: 40px;
       cursor: pointer;
       font-family: 'Share Tech Mono', monospace;
-      font-size: 0.82rem;
+      font-size: clamp(.7rem, 2.8vw, .82rem);
       color: var(--text);
-      transition: all 0.2s;
+      transition: all .2s;
       white-space: nowrap;
-      height: 38px;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
     }
-    .toggle-btn:hover { border-color: var(--blue); }
-    .toggle-icon {
-      font-size: 1rem;
-      transition: transform 0.35s;
-    }
-    .toggle-btn.desc .toggle-icon { transform: scaleY(-1); }
-    .toggle-btn.asc  { border-color: var(--neon); color: var(--neon); }
-    .toggle-btn.desc { border-color: var(--accent); color: var(--accent); }
+    .toggle-icon { transition: transform .35s; }
+    .toggle-btn.asc  { border-color: var(--neon);   color: var(--neon); }
+    .toggle-btn.desc { border-color: var(--accent);  color: var(--accent); }
 
-    /* Buttons */
+    /* speed */
+    .speed-wrap {
+      flex: 1 1 120px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .speed-row {
+      display: flex; align-items: center; gap: 8px;
+      font-size: clamp(.6rem, 2.2vw, .7rem);
+      color: var(--muted);
+    }
+    input[type=range] {
+      -webkit-appearance: none;
+      flex: 1;
+      height: 4px;
+      border-radius: 2px;
+      background: var(--border);
+      outline: none;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 20px; height: 20px;
+      border-radius: 50%;
+      background: var(--neon);
+      cursor: pointer;
+      box-shadow: 0 0 6px var(--neon)88;
+    }
+    input[type=range]::-moz-range-thumb {
+      width: 20px; height: 20px;
+      border-radius: 50%;
+      background: var(--neon);
+      border: none;
+      cursor: pointer;
+    }
+
+    /* buttons */
+    .btn-group { display: flex; gap: 8px; flex: 0 0 auto; align-items: flex-end; }
     .btn {
-      height: 38px;
-      padding: 0 20px;
+      height: 40px;
+      padding: 0 16px;
       border: none;
       border-radius: 4px;
       font-family: 'Share Tech Mono', monospace;
-      font-size: 0.82rem;
-      letter-spacing: 0.08em;
+      font-size: clamp(.7rem, 2.8vw, .82rem);
+      letter-spacing: .06em;
       cursor: pointer;
-      transition: all 0.18s;
+      transition: all .18s;
       white-space: nowrap;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
     }
-    .btn-sort {
-      background: var(--neon);
-      color: #0a0c0f;
-      font-weight: bold;
-    }
-    .btn-sort:hover { box-shadow: var(--neon-glow); filter: brightness(1.1); }
-    .btn-sort:disabled { opacity: 0.4; cursor: not-allowed; box-shadow: none; }
-
-    .btn-reset {
-      background: transparent;
-      border: 1px solid var(--accent);
-      color: var(--accent);
-    }
+    .btn-sort { background: var(--neon); color: #0a0c0f; font-weight: bold; }
+    .btn-sort:hover:not(:disabled) { box-shadow: var(--neon-glow); filter: brightness(1.1); }
+    .btn-sort:disabled { opacity: .4; cursor: not-allowed; }
+    .btn-reset { background: transparent; border: 1px solid var(--accent); color: var(--accent); }
     .btn-reset:hover { background: var(--accent-dim); }
 
-    /* ── Stats Bar ── */
+    /* ── Stats ── */
     .stats-bar {
-      display: flex;
-      gap: 20px;
-      flex-wrap: wrap;
-      margin-bottom: 20px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+      gap: 8px;
+      margin-bottom: 14px;
     }
     .stat-chip {
       background: var(--panel);
       border: 1px solid var(--border);
       border-radius: 4px;
-      padding: 8px 16px;
+      padding: 8px 10px;
       display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 0.78rem;
+      flex-direction: column;
+      gap: 2px;
     }
-    .stat-label { color: var(--muted); letter-spacing: 0.1em; }
+    .stat-label {
+      font-size: clamp(.5rem, 2vw, .62rem);
+      color: var(--muted);
+      letter-spacing: .1em;
+    }
     .stat-val {
-      font-size: 1.05rem;
+      font-size: clamp(.88rem, 3.5vw, 1.1rem);
       font-weight: bold;
-      transition: color 0.3s;
+      transition: color .3s;
     }
     .stat-val.neon   { color: var(--neon); text-shadow: 0 0 6px var(--neon); }
     .stat-val.accent { color: var(--accent); }
@@ -230,170 +242,149 @@
     /* ── Legend ── */
     .legend {
       display: flex;
-      gap: 16px;
       flex-wrap: wrap;
-      margin-bottom: 20px;
+      gap: 8px 14px;
+      margin-bottom: 14px;
     }
     .legend-item {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 0.72rem;
+      display: flex; align-items: center; gap: 5px;
+      font-size: clamp(.56rem, 2.2vw, .7rem);
       color: var(--muted);
     }
-    .legend-dot {
-      width: 10px; height: 10px;
-      border-radius: 2px;
-    }
+    .legend-dot { width: 9px; height: 9px; border-radius: 2px; flex-shrink: 0; }
 
     /* ── Visualizer ── */
     .viz-container {
       background: var(--panel);
       border: 1px solid var(--border);
       border-radius: 8px;
-      padding: 24px 20px 16px;
-      min-height: 320px;
-      display: flex;
-      flex-direction: column;
+      padding: 28px 12px 12px;
       position: relative;
       overflow: hidden;
     }
-    .viz-container::before {
-      content: 'ARRAY VISUALIZER';
+    .viz-label {
       position: absolute;
-      top: 10px; left: 16px;
-      font-size: 0.62rem;
-      letter-spacing: 0.18em;
+      top: 9px; left: 14px;
+      font-size: clamp(.5rem, 2vw, .62rem);
+      letter-spacing: .16em;
       color: var(--muted);
     }
 
     #bars-wrapper {
-      flex: 1;
       display: flex;
       align-items: flex-end;
       justify-content: center;
-      gap: 4px;
-      padding: 24px 4px 4px;
-      min-height: 260px;
+      gap: clamp(2px, 0.7vw, 5px);
+      height: clamp(160px, 38vw, 280px);
+      padding-bottom: 2px;
+      overflow: hidden;
     }
 
     .bar-col {
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 4px;
-      flex: 1;
-      max-width: 64px;
+      justify-content: flex-end;
+      gap: 3px;
+      flex: 1 1 0;
+      min-width: 0;
+      max-width: 60px;
+      height: 100%;
     }
 
     .bar {
       width: 100%;
       border-radius: 3px 3px 0 0;
-      transition: height 0.35s cubic-bezier(.4,0,.2,1), background 0.25s;
-      position: relative;
-      min-height: 6px;
+      transition: height .32s cubic-bezier(.4,0,.2,1), background .22s;
+      min-height: 4px;
     }
-
-    .bar.idle    { background: linear-gradient(180deg, #334155, #1e293b); }
-    .bar.compare { background: linear-gradient(180deg, var(--compare), #ca8a04); box-shadow: 0 0 10px var(--compare)55; }
-    .bar.merge   { background: linear-gradient(180deg, var(--merge), #7c3aed);   box-shadow: 0 0 10px var(--merge)55;   }
-    .bar.sorted  { background: linear-gradient(180deg, var(--sorted), #059669);  box-shadow: 0 0 10px var(--sorted)55;  }
-    .bar.pivot   { background: linear-gradient(180deg, var(--blue), #0284c7);    box-shadow: 0 0 10px var(--blue)55;    }
+    .bar.idle    { background: linear-gradient(180deg,#334155,#1e293b); }
+    .bar.compare { background: linear-gradient(180deg,var(--compare),#ca8a04); box-shadow: 0 0 8px var(--compare)55; }
+    .bar.merge   { background: linear-gradient(180deg,var(--merge),#7c3aed);   box-shadow: 0 0 8px var(--merge)55; }
+    .bar.sorted  { background: linear-gradient(180deg,var(--sorted),#059669);  box-shadow: 0 0 8px var(--sorted)55; }
 
     .bar-label {
-      font-size: clamp(0.5rem, 1.2vw, 0.72rem);
+      font-size: clamp(.42rem, 1.6vw, .65rem);
       color: var(--muted);
       text-align: center;
-    }
-
-    /* ── Log Panel ── */
-    .log-panel {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      margin-top: 20px;
+      white-space: nowrap;
       overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
+      line-height: 1;
     }
-    .log-header {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 10px 16px;
-      border-bottom: 1px solid var(--border);
-      font-size: 0.7rem;
-      letter-spacing: 0.15em;
-      color: var(--muted);
-    }
-    .log-dot {
-      width: 8px; height: 8px;
-      border-radius: 50%;
-      background: var(--neon);
-      animation: pulse-dot 1.8s ease-in-out infinite;
-    }
-    @keyframes pulse-dot {
-      0%, 100% { opacity: 1; box-shadow: 0 0 4px var(--neon); }
-      50%       { opacity: 0.3; box-shadow: none; }
-    }
-    #log-list {
-      max-height: 180px;
-      overflow-y: auto;
-      padding: 8px 0;
-      scrollbar-width: thin;
-      scrollbar-color: var(--border) transparent;
-    }
-    .log-entry {
-      padding: 4px 16px;
-      font-size: 0.74rem;
-      display: flex;
-      gap: 12px;
-      align-items: baseline;
-      animation: fadeSlide 0.3s ease;
-    }
-    @keyframes fadeSlide {
-      from { opacity: 0; transform: translateX(-8px); }
-      to   { opacity: 1; transform: translateX(0); }
-    }
-    .log-iter { color: var(--accent); min-width: 60px; font-size: 0.68rem; }
-    .log-msg  { color: var(--text); line-height: 1.4; }
-    .log-msg span.hl { color: var(--neon); }
+    .bar-col.hide-label .bar-label { display: none; }
 
     /* ── Status ── */
     #status-text {
       text-align: center;
-      font-size: 0.78rem;
-      letter-spacing: 0.12em;
+      font-size: clamp(.62rem, 2.5vw, .78rem);
+      letter-spacing: .1em;
       color: var(--muted);
-      margin-top: 16px;
-      min-height: 20px;
+      margin: 12px 4px 0;
+      min-height: 18px;
+      line-height: 1.5;
     }
-    #status-text.done {
-      color: var(--neon);
-      text-shadow: 0 0 8px var(--neon)88;
-    }
+    #status-text.done { color: var(--neon); text-shadow: 0 0 8px var(--neon)88; }
 
-    /* Speed slider */
-    .speed-wrap {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      font-size: 0.72rem;
+    /* ── Log ── */
+    .log-panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      margin-top: 14px;
+      overflow: hidden;
+    }
+    .log-header {
+      display: flex; align-items: center; gap: 8px;
+      padding: 9px 14px;
+      border-bottom: 1px solid var(--border);
+      font-size: clamp(.56rem, 2.2vw, .7rem);
+      letter-spacing: .14em;
       color: var(--muted);
     }
-    input[type=range] {
-      -webkit-appearance: none;
-      width: 100px;
-      height: 4px;
-      border-radius: 2px;
-      background: var(--border);
-      outline: none;
-    }
-    input[type=range]::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      width: 14px; height: 14px;
+    .log-dot {
+      width: 7px; height: 7px;
       border-radius: 50%;
       background: var(--neon);
-      cursor: pointer;
-      box-shadow: 0 0 6px var(--neon)88;
+      flex-shrink: 0;
+      animation: pdot 1.8s ease-in-out infinite;
+    }
+    @keyframes pdot {
+      0%,100% { opacity:1; box-shadow: 0 0 4px var(--neon); }
+      50%      { opacity:.3; box-shadow:none; }
+    }
+    #log-list {
+      max-height: clamp(120px, 25vw, 180px);
+      overflow-y: auto;
+      padding: 6px 0;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) transparent;
+      overscroll-behavior: contain;
+    }
+    .log-entry {
+      padding: 4px 14px;
+      font-size: clamp(.58rem, 2.3vw, .73rem);
+      display: flex;
+      gap: 10px;
+      align-items: baseline;
+      animation: fadeSlide .28s ease;
+    }
+    @keyframes fadeSlide {
+      from { opacity:0; transform:translateX(-6px); }
+      to   { opacity:1; transform:translateX(0); }
+    }
+    .log-iter { color: var(--accent); min-width: 52px; font-size: clamp(.54rem, 2vw, .67rem); }
+    .log-msg  { color: var(--text); line-height: 1.45; }
+    .log-msg span.hl { color: var(--neon); }
+
+    /* ── Responsive ── */
+    @media (min-width: 560px) {
+      .ctrl-row { flex-wrap: nowrap; }
+    }
+    @media (min-width: 720px) {
+      .wrapper { padding: 28px 20px 60px; }
+      .control-panel { padding: 20px 22px; gap: 14px; }
     }
   </style>
 </head>
@@ -402,44 +393,50 @@
 
   <header>
     <div class="title-badge">MERGE SORT</div>
-    <div class="subtitle">// ALGORITHM VISUALIZER v1.0</div>
+    <div class="subtitle">// ALGORITHM VISUALIZER v2.0</div>
   </header>
 
   <!-- Control Panel -->
   <div class="control-panel">
+
     <div class="field">
-      <label>// INPUT ARRAY (comma-separated)</label>
-      <input id="input-nums" type="text" placeholder="e.g. 38, 27, 43, 3, 9, 82, 10" />
+      <label>// INPUT ARRAY — COMMA SEPARATED</label>
+      <input id="input-nums" type="text" inputmode="decimal"
+             placeholder="e.g. 38, 27, 43, 3, 9, 82, 10"/>
     </div>
 
-    <div class="toggle-wrap">
-      <label>// ORDER</label>
-      <button class="toggle-btn asc" id="order-toggle" onclick="toggleOrder()">
-        <span class="toggle-icon">↑</span>
-        <span id="order-label">ASCENDING</span>
-      </button>
-    </div>
+    <div class="ctrl-row">
 
-    <div class="speed-wrap" style="flex-direction:column; align-items:flex-start;">
-      <label style="font-size:0.7rem;letter-spacing:0.12em;color:var(--muted);margin-bottom:6px;">// SPEED</label>
-      <div style="display:flex;align-items:center;gap:8px;">
-        <span>SLOW</span>
-        <input type="range" id="speed-slider" min="1" max="5" value="3" />
-        <span>FAST</span>
+      <div class="toggle-wrap">
+        <div class="row-label">// ORDER</div>
+        <button class="toggle-btn asc" id="order-toggle" onclick="toggleOrder()">
+          <span class="toggle-icon" id="toggle-icon">↑</span>
+          <span id="order-label">ASCENDING</span>
+        </button>
       </div>
-    </div>
 
-    <div style="display:flex;gap:10px;align-items:flex-end;">
-      <button class="btn btn-sort" id="sort-btn" onclick="startSort()">▶ SORT</button>
-      <button class="btn btn-reset" onclick="resetAll()">⟳ RESET</button>
+      <div class="speed-wrap">
+        <div class="row-label">// SPEED</div>
+        <div class="speed-row">
+          <span>SLOW</span>
+          <input type="range" id="speed-slider" min="1" max="5" value="3"/>
+          <span>FAST</span>
+        </div>
+      </div>
+
+      <div class="btn-group">
+        <button class="btn btn-sort" id="sort-btn" onclick="startSort()">▶ SORT</button>
+        <button class="btn btn-reset" onclick="resetAll()">⟳ RESET</button>
+      </div>
+
     </div>
   </div>
 
-  <!-- Stats Bar -->
+  <!-- Stats -->
   <div class="stats-bar">
     <div class="stat-chip">
       <span class="stat-label">ITERATION</span>
-      <span class="stat-val neon" id="stat-iter">0</span>
+      <span class="stat-val neon"   id="stat-iter">0</span>
     </div>
     <div class="stat-chip">
       <span class="stat-label">COMPARISONS</span>
@@ -447,7 +444,7 @@
     </div>
     <div class="stat-chip">
       <span class="stat-label">MERGES</span>
-      <span class="stat-val blue" id="stat-merge">0</span>
+      <span class="stat-val blue"   id="stat-merge">0</span>
     </div>
     <div class="stat-chip">
       <span class="stat-label">ARRAY SIZE</span>
@@ -461,21 +458,21 @@
 
   <!-- Legend -->
   <div class="legend">
-    <div class="legend-item"><div class="legend-dot" style="background:#334155"></div> UNSORTED</div>
-    <div class="legend-item"><div class="legend-dot" style="background:var(--compare)"></div> COMPARING</div>
-    <div class="legend-item"><div class="legend-dot" style="background:var(--merge)"></div> MERGING</div>
-    <div class="legend-item"><div class="legend-dot" style="background:var(--sorted)"></div> SORTED</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#334155"></div>UNSORTED</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--compare)"></div>COMPARING</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--merge)"></div>MERGING</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--sorted)"></div>SORTED</div>
   </div>
 
-  <!-- Bar Chart Visualizer -->
+  <!-- Visualizer -->
   <div class="viz-container">
+    <div class="viz-label">ARRAY VISUALIZER</div>
     <div id="bars-wrapper"></div>
   </div>
 
-  <!-- Status Text -->
   <div id="status-text">// ENTER NUMBERS AND PRESS SORT</div>
 
-  <!-- Log Panel -->
+  <!-- Log -->
   <div class="log-panel">
     <div class="log-header">
       <div class="log-dot"></div>
@@ -487,53 +484,50 @@
 </div>
 
 <script>
-  // ── State ──────────────────────────────────────────────────────────────────
-  let arr = [];
-  let barStates = [];
+  /* ── State ── */
+  let arr       = [];
   let isRunning = false;
   let ascending = true;
-  let iterCount = 0;
-  let compCount = 0;
-  let mergeCount = 0;
-  let steps = [];      // pre-recorded animation steps
+  let iterCount = 0, compCount = 0, mergeCount = 0;
+  let steps     = [];
   let animTimer = null;
 
-  // ── Speed mapping ──────────────────────────────────────────────────────────
+  /* ── Delay ── */
   function getDelay() {
-    const v = +document.getElementById('speed-slider').value;
-    return [600, 400, 220, 100, 30][v - 1];
+    return [700, 420, 230, 100, 30][+document.getElementById('speed-slider').value - 1];
   }
 
-  // ── Toggle Order ───────────────────────────────────────────────────────────
+  /* ── Toggle order ── */
   function toggleOrder() {
     if (isRunning) return;
     ascending = !ascending;
     const btn = document.getElementById('order-toggle');
-    const lbl = document.getElementById('order-label');
     btn.className = 'toggle-btn ' + (ascending ? 'asc' : 'desc');
-    lbl.textContent = ascending ? 'ASCENDING' : 'DESCENDING';
+    document.getElementById('order-label').textContent = ascending ? 'ASCENDING' : 'DESCENDING';
+    document.getElementById('toggle-icon').textContent = ascending ? '↑' : '↓';
   }
 
-  // ── Reset ──────────────────────────────────────────────────────────────────
+  /* ── Reset ── */
   function resetAll() {
     if (animTimer) clearTimeout(animTimer);
     isRunning = false;
-    arr = []; barStates = []; steps = [];
-    iterCount = 0; compCount = 0; mergeCount = 0;
+    arr = []; steps = [];
+    iterCount = compCount = mergeCount = 0;
     document.getElementById('input-nums').value = '';
     document.getElementById('bars-wrapper').innerHTML = '';
     document.getElementById('log-list').innerHTML = '';
-    document.getElementById('stat-iter').textContent = '0';
-    document.getElementById('stat-comp').textContent = '0';
-    document.getElementById('stat-merge').textContent = '0';
+    ['stat-iter','stat-comp','stat-merge'].forEach(id =>
+      document.getElementById(id).textContent = '0');
     document.getElementById('stat-size').textContent = '–';
     document.getElementById('stat-order').textContent = '–';
-    document.getElementById('status-text').textContent = '// ENTER NUMBERS AND PRESS SORT';
-    document.getElementById('status-text').className = '';
+    document.getElementById('stat-order').style.color = 'var(--muted)';
+    const st = document.getElementById('status-text');
+    st.textContent = '// ENTER NUMBERS AND PRESS SORT';
+    st.className = '';
     document.getElementById('sort-btn').disabled = false;
   }
 
-  // ── Parse input ────────────────────────────────────────────────────────────
+  /* ── Parse ── */
   function parseInput() {
     const raw = document.getElementById('input-nums').value.trim();
     if (!raw) return null;
@@ -541,21 +535,21 @@
     return nums.length >= 2 ? nums : null;
   }
 
-  // ── Render bars ────────────────────────────────────────────────────────────
+  /* ── Render bars ── */
   function renderBars(array, states) {
-    const wrap = document.getElementById('bars-wrapper');
-    wrap.innerHTML = '';
+    const wrap  = document.getElementById('bars-wrapper');
+    const wrapH = wrap.clientHeight || 200;
     const maxVal = Math.max(...array.map(Math.abs), 1);
+    const n = array.length;
 
+    wrap.innerHTML = '';
     array.forEach((val, i) => {
       const col = document.createElement('div');
-      col.className = 'bar-col';
+      col.className = 'bar-col' + (n > 20 ? ' hide-label' : '');
 
       const bar = document.createElement('div');
       bar.className = 'bar ' + (states[i] || 'idle');
-      const heightPct = Math.max(4, (Math.abs(val) / maxVal) * 220);
-      bar.style.height = heightPct + 'px';
-      bar.id = 'bar-' + i;
+      bar.style.height = Math.max(4, (Math.abs(val) / maxVal) * (wrapH - 22)) + 'px';
 
       const lbl = document.createElement('div');
       lbl.className = 'bar-label';
@@ -567,61 +561,47 @@
     });
   }
 
-  // ── Update single bar state ────────────────────────────────────────────────
+  /* ── Apply step ── */
   function applyStep(step) {
-    // step: { type, array, states, iter, comp, merges, logMsg }
     arr = step.array.slice();
-    barStates = step.states.slice();
-    iterCount = step.iter;
-    compCount = step.comp;
+    iterCount  = step.iter;
+    compCount  = step.comp;
     mergeCount = step.merges;
-
-    renderBars(arr, barStates);
-
-    document.getElementById('stat-iter').textContent = iterCount;
-    document.getElementById('stat-comp').textContent = compCount;
+    renderBars(arr, step.states);
+    document.getElementById('stat-iter').textContent  = iterCount;
+    document.getElementById('stat-comp').textContent  = compCount;
     document.getElementById('stat-merge').textContent = mergeCount;
-
     if (step.logMsg) addLog(iterCount, step.logMsg);
   }
 
-  // ── Add log entry ──────────────────────────────────────────────────────────
+  /* ── Log ── */
   function addLog(iter, msg) {
-    const list = document.getElementById('log-list');
+    const list  = document.getElementById('log-list');
     const entry = document.createElement('div');
     entry.className = 'log-entry';
-    entry.innerHTML = `<span class="log-iter">[ITER ${String(iter).padStart(3,'0')}]</span><span class="log-msg">${msg}</span>`;
+    entry.innerHTML =
+      `<span class="log-iter">[ITER ${String(iter).padStart(3,'0')}]</span>` +
+      `<span class="log-msg">${msg}</span>`;
     list.appendChild(entry);
     list.scrollTop = list.scrollHeight;
   }
 
-  // ── Pre-compute all merge sort steps ──────────────────────────────────────
-  function computeSteps(inputArr) {
+  /* ── Compute steps (bottom-up merge sort) ── */
+  function computeSteps(input) {
     steps = [];
-    let workArr = inputArr.slice();
+    const w = input.slice();
+    const n = w.length;
     let iter = 0, comp = 0, merges = 0;
-    const n = workArr.length;
-    const states = new Array(n).fill('idle');
 
-    function pushStep(type, arr, st, logMsg) {
-      steps.push({
-        type,
-        array: arr.slice(),
-        states: st.slice(),
-        iter,
-        comp,
-        merges,
-        logMsg
-      });
+    function push(type, arr, states, logMsg) {
+      steps.push({ type, array: arr.slice(), states: states.slice(),
+                   iter, comp, merges, logMsg });
     }
 
-    // Iterative (bottom-up) merge sort
     for (let size = 1; size < n; size *= 2) {
       iter++;
-      const dirLabel = ascending ? 'ASC' : 'DESC';
-      const initStates = new Array(n).fill('idle');
-      pushStep('iter-start', workArr, initStates,
-        `<span class="hl">ITERATION ${iter}</span> — merging subarrays of size <span class="hl">${size}</span> (order: ${dirLabel})`);
+      push('iter-start', w, new Array(n).fill('idle'),
+        `<span class="hl">ITERATION ${iter}</span> — subarray size <span class="hl">${size}</span>`);
 
       for (let left = 0; left < n; left += 2 * size) {
         const mid   = Math.min(left + size - 1, n - 1);
@@ -629,52 +609,43 @@
         if (mid >= right) continue;
 
         merges++;
-        // Mark subarray being merged
-        const preStates = new Array(n).fill('idle');
-        for (let x = left; x <= right; x++) preStates[x] = 'merge';
-        pushStep('merge-start', workArr, preStates,
-          `Merging indices <span class="hl">[${left}..${mid}]</span> + <span class="hl">[${mid+1}..${right}]</span>`);
+        const preS = new Array(n).fill('idle');
+        for (let x = left; x <= right; x++) preS[x] = 'merge';
+        push('merge-start', w, preS,
+          `Merging <span class="hl">[${left}..${mid}]</span> + <span class="hl">[${mid+1}..${right}]</span>`);
 
-        // Perform merge with comparisons recorded
         const temp = [];
         let i = left, j = mid + 1;
         while (i <= mid && j <= right) {
           comp++;
-          const cmpStates = preStates.slice();
-          cmpStates[i] = 'compare';
-          cmpStates[j] = 'compare';
-          pushStep('compare', workArr, cmpStates,
-            `Comparing <span class="hl">${workArr[i]}</span> vs <span class="hl">${workArr[j]}</span>`);
-
-          const pick = ascending ? workArr[i] <= workArr[j] : workArr[i] >= workArr[j];
-          if (pick) { temp.push(workArr[i++]); }
-          else       { temp.push(workArr[j++]); }
+          const cS = preS.slice(); cS[i] = cS[j] = 'compare';
+          push('compare', w, cS,
+            `Comparing <span class="hl">${w[i]}</span> vs <span class="hl">${w[j]}</span>`);
+          if (ascending ? w[i] <= w[j] : w[i] >= w[j]) temp.push(w[i++]);
+          else                                           temp.push(w[j++]);
         }
-        while (i <= mid)   temp.push(workArr[i++]);
-        while (j <= right) temp.push(workArr[j++]);
+        while (i <= mid)   temp.push(w[i++]);
+        while (j <= right) temp.push(w[j++]);
+        for (let k = 0; k < temp.length; k++) w[left + k] = temp[k];
 
-        for (let k = 0; k < temp.length; k++) workArr[left + k] = temp[k];
-
-        const postStates = new Array(n).fill('idle');
-        for (let x = left; x <= right; x++) postStates[x] = 'sorted';
-        pushStep('merge-done', workArr, postStates,
-          `Merged → <span class="hl">[${workArr.slice(left, right+1).join(', ')}]</span>`);
+        const postS = new Array(n).fill('idle');
+        for (let x = left; x <= right; x++) postS[x] = 'sorted';
+        push('merge-done', w, postS,
+          `Merged → <span class="hl">[${w.slice(left, right+1).join(', ')}]</span>`);
       }
     }
 
-    // Mark all sorted
-    const doneStates = new Array(n).fill('sorted');
-    pushStep('done', workArr, doneStates,
-      `<span class="hl">✓ SORT COMPLETE</span> — ${iter} iterations, ${comp} comparisons, ${merges} merges`);
+    push('done', w, new Array(n).fill('sorted'),
+      `<span class="hl">✓ COMPLETE</span> — ${iter} iter · ${comp} comparisons · ${merges} merges`);
   }
 
-  // ── Animate steps ──────────────────────────────────────────────────────────
+  /* ── Animate ── */
   function animateSteps(idx) {
     if (idx >= steps.length) {
       isRunning = false;
       document.getElementById('sort-btn').disabled = false;
       const st = document.getElementById('status-text');
-      st.textContent = `// ✓ SORT COMPLETE — ${iterCount} ITERATIONS | ${compCount} COMPARISONS | ${mergeCount} MERGES`;
+      st.textContent = `// ✓ DONE — ${iterCount} ITERATIONS | ${compCount} COMPARISONS | ${mergeCount} MERGES`;
       st.className = 'done';
       return;
     }
@@ -682,7 +653,7 @@
     animTimer = setTimeout(() => animateSteps(idx + 1), getDelay());
   }
 
-  // ── Start ──────────────────────────────────────────────────────────────────
+  /* ── Start ── */
   function startSort() {
     if (isRunning) return;
     const nums = parseInput();
@@ -690,29 +661,22 @@
       document.getElementById('status-text').textContent = '// ⚠ ENTER AT LEAST 2 VALID NUMBERS';
       return;
     }
-
     isRunning = true;
     document.getElementById('sort-btn').disabled = true;
     document.getElementById('log-list').innerHTML = '';
-    iterCount = 0; compCount = 0; mergeCount = 0;
-    document.getElementById('stat-iter').textContent = '0';
-    document.getElementById('stat-comp').textContent = '0';
-    document.getElementById('stat-merge').textContent = '0';
-    document.getElementById('stat-size').textContent = nums.length;
+    iterCount = compCount = mergeCount = 0;
+    document.getElementById('stat-size').textContent  = nums.length;
     document.getElementById('stat-order').textContent = ascending ? 'ASC ↑' : 'DESC ↓';
     document.getElementById('stat-order').style.color = ascending ? 'var(--neon)' : 'var(--accent)';
-    document.getElementById('status-text').textContent = '// RUNNING MERGE SORT...';
-    document.getElementById('status-text').className = '';
-
+    const st = document.getElementById('status-text');
+    st.textContent = '// RUNNING MERGE SORT…'; st.className = '';
     arr = nums.slice();
-    barStates = new Array(arr.length).fill('idle');
-    renderBars(arr, barStates);
-
+    renderBars(arr, new Array(arr.length).fill('idle'));
     computeSteps(arr);
     animateSteps(0);
   }
 
-  // ── Init default render ────────────────────────────────────────────────────
+  /* ── Keyboard ── */
   document.getElementById('input-nums').addEventListener('keydown', e => {
     if (e.key === 'Enter' && !isRunning) startSort();
   });
