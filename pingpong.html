@@ -743,9 +743,9 @@ function applyKeyboard() {
 // We smooth the raw gamma with a low-pass lerp to avoid jitter.
 let smoothGamma   = 0;
 let motionReady   = false;
-const TILT_SENS   = 3.8;   // paddle px moved per degree of tilt per frame
+const TILT_SENS   = 3.0;   // paddle px moved per degree of tilt per frame
 const TILT_DEAD   = 1.8;   // degrees deadzone — ignore micro-tremor
-const TILT_SMOOTH = 0.18;  // lerp alpha (lower = smoother but laggier)
+const TILT_SMOOTH = 0.12;  // lerp alpha (lower = smoother but laggier)
 const TILT_MAX    = 40;    // cap tilt at ±40° so extreme angles aren't wild
 
 function applyMotion() {
