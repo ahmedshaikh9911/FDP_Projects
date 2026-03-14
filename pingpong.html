@@ -729,7 +729,7 @@ function getCanvasRelY(clientY) {
   return clientY - canvas.getBoundingClientRect().top;
 }
 
-document.addEventListener('touchstart', e => {
+canvas.addEventListener('touchstart', e => {
   e.preventDefault();
   ensureAudio();
   for (const t of e.changedTouches) {
@@ -743,7 +743,7 @@ document.addEventListener('touchstart', e => {
   }
 }, { passive: false });
 
-document.addEventListener('touchmove', e => {
+canvas.addEventListener('touchmove', e => {
   e.preventDefault();
   for (const t of e.changedTouches) {
     const info = activeTouches[t.identifier];
@@ -756,10 +756,10 @@ document.addEventListener('touchmove', e => {
   }
 }, { passive: false });
 
-document.addEventListener('touchend', e => {
+canvas.addEventListener('touchend', e => {
   for (const t of e.changedTouches) delete activeTouches[t.identifier];
 });
-document.addEventListener('touchcancel', e => {
+canvas.addEventListener('touchcancel', e => {
   for (const t of e.changedTouches) delete activeTouches[t.identifier];
 });
 
