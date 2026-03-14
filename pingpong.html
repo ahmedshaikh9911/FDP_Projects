@@ -271,7 +271,7 @@
     <div class="screen-title">PONG</div>
     <div class="screen-subtitle">
       FIRST TO 5 WINS<br>
-      DRAG PADDLE TO MOVE
+      TILT TO MOVE  ·  ← → KEYS
     </div>
     <button class="btn" id="btn-1p">▶ VS CPU</button>
     <button class="btn secondary" id="btn-2p">⇌ 2 PLAYERS</button>
@@ -316,7 +316,7 @@
     </div>
 
     <canvas id="pong"></canvas>
-    <div id="hint">DRAG PADDLE  ·  ← → ARROW KEYS</div>
+    <div id="hint">← → ARROW KEYS</div>
   </div>
 
 </div>
@@ -690,7 +690,8 @@ function roundRect(ctx, x, y, w, h, r) {
 
 // ── GAME LOOP ─────────────────────────────────────────────────
 function loop() {
-  applyKeyboard();
+  applyKeyboard(); // desktop: arrow keys
+  applyMotion();   // mobile: tilt sensor
   aiMove();
   updateBall();
   draw();
@@ -699,8 +700,10 @@ function loop() {
 
 // ── INPUT ─────────────────────────────────────────────────────
 
-// Arrow keys
-const KEYBOARD_SPEED = 7; // px per frame
+const isMobile = () => ('ontouchstart' in window) || /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+// ── DESKTOP: Arrow keys ───────────────────────────────────────
+const KEYBOARD_SPEED = 7;
 
 document.addEventListener('keydown', e => {
   if (e.key === 'ArrowLeft')  { keys.left  = true; e.preventDefault(); }
@@ -711,74 +714,86 @@ document.addEventListener('keyup', e => {
   if (e.key === 'ArrowRight') keys.right = false;
 });
 
-function applyKeyboard() {
-  if (keys.left)  { paddle.p1.x -= KEYBOARD_SPEED; clampPaddle('p1'); }
-  if (keys.right) { paddle.p1.x += KEYBOARD_SPEED; clampPaddle('p1'); }
-}
-
-// ── TOUCH ─────────────────────────────────────────────────────
-// Each touch is tracked by its identifier.
-// In 1P: any touch controls P1.
-// In 2P: touches in bottom half → P1, top half → P2.
-const activeTouches = {}; // id → { lastX, player }
-
-function getCanvasRelX(clientX) {
-  return clientX - canvas.getBoundingClientRect().left;
-}
-function getCanvasRelY(clientY) {
-  return clientY - canvas.getBoundingClientRect().top;
-}
-
-canvas.addEventListener('touchstart', e => {
-  e.preventDefault();
-  ensureAudio();
-  for (const t of e.changedTouches) {
-    const cx = getCanvasRelX(t.clientX);
-    const cy = getCanvasRelY(t.clientY);
-    let player = 'p1';
-    if (isTwoPlayer && cy < canvas.getBoundingClientRect().height / 2) {
-      player = 'p2';
-    }
-    activeTouches[t.identifier] = { lastX: cx, player };
-  }
-}, { passive: false });
-
-canvas.addEventListener('touchmove', e => {
-  e.preventDefault();
-  for (const t of e.changedTouches) {
-    const info = activeTouches[t.identifier];
-    if (!info) continue;
-    const cx = getCanvasRelX(t.clientX);
-    const delta = cx - info.lastX;
-    info.lastX = cx;
-    paddle[info.player].x += delta;
-    clampPaddle(info.player);
-  }
-}, { passive: false });
-
-canvas.addEventListener('touchend', e => {
-  for (const t of e.changedTouches) delete activeTouches[t.identifier];
-});
-canvas.addEventListener('touchcancel', e => {
-  for (const t of e.changedTouches) delete activeTouches[t.identifier];
-});
-
-// ── MOUSE ─────────────────────────────────────────────────────
+// ── DESKTOP: Mouse drag ───────────────────────────────────────
 let mouseDown = false, lastMouseX = 0;
 canvas.addEventListener('mousedown', e => {
+  if (isMobile()) return;
   ensureAudio();
   mouseDown = true;
-  lastMouseX = getCanvasRelX(e.clientX);
+  lastMouseX = e.clientX - canvas.getBoundingClientRect().left;
 });
 window.addEventListener('mousemove', e => {
-  if (!mouseDown) return;
-  const cx = getCanvasRelX(e.clientX);
+  if (!mouseDown || isMobile()) return;
+  const cx = e.clientX - canvas.getBoundingClientRect().left;
   paddle.p1.x += cx - lastMouseX;
   lastMouseX = cx;
   clampPaddle('p1');
 });
 window.addEventListener('mouseup',    () => { mouseDown = false; });
 window.addEventListener('mouseleave', () => { mouseDown = false; });
+
+function applyKeyboard() {
+  if (isMobile()) return;
+  if (keys.left)  { paddle.p1.x -= KEYBOARD_SPEED; clampPaddle('p1'); }
+  if (keys.right) { paddle.p1.x += KEYBOARD_SPEED; clampPaddle('p1'); }
+}
+
+// ── MOBILE: Motion sensor ─────────────────────────────────────
+// gamma = left/right tilt: negative tilts paddle left, positive tilts right
+// We smooth the raw gamma with a low-pass lerp to avoid jitter.
+let smoothGamma   = 0;
+let motionReady   = false;
+const TILT_SENS   = 3.8;   // paddle px moved per degree of tilt per frame
+const TILT_DEAD   = 1.8;   // degrees deadzone — ignore micro-tremor
+const TILT_SMOOTH = 0.18;  // lerp alpha (lower = smoother but laggier)
+const TILT_MAX    = 40;    // cap tilt at ±40° so extreme angles aren't wild
+
+function applyMotion() {
+  if (!motionReady || !isMobile()) return;
+  const clamped = Math.max(-TILT_MAX, Math.min(TILT_MAX, smoothGamma));
+  const effective = Math.abs(clamped) < TILT_DEAD ? 0 : clamped;
+  paddle.p1.x += effective * TILT_SENS;
+  clampPaddle('p1');
+}
+
+function attachOrientationListener() {
+  window.addEventListener('deviceorientation', e => {
+    const raw = e.gamma ?? 0; // gamma: tilt left/right in degrees
+    // Low-pass filter to smooth out noise
+    smoothGamma += (raw - smoothGamma) * TILT_SMOOTH;
+    motionReady = true;
+  });
+  document.getElementById('hint').textContent = 'TILT PHONE LEFT / RIGHT';
+}
+
+function initMotionSensor() {
+  if (!isMobile()) return;
+  // iOS 13+ requires explicit permission via a user gesture
+  if (typeof DeviceOrientationEvent !== 'undefined' &&
+      typeof DeviceOrientationEvent.requestPermission === 'function') {
+    DeviceOrientationEvent.requestPermission()
+      .then(state => {
+        if (state === 'granted') {
+          attachOrientationListener();
+        } else {
+          document.getElementById('hint').textContent = 'MOTION DENIED — TILT WONT WORK';
+        }
+      })
+      .catch(() => {
+        document.getElementById('hint').textContent = 'MOTION ERROR';
+      });
+  } else {
+    // Android and older iOS — no permission needed
+    attachOrientationListener();
+  }
+}
+
+// Trigger motion init on the very first tap (satisfies iOS user-gesture requirement)
+document.addEventListener('touchstart', function onFirstTap() {
+  ensureAudio();
+  initMotionSensor();
+  document.removeEventListener('touchstart', onFirstTap);
+}, { once: true });
 
 // ── BUTTONS ───────────────────────────────────────────────────
 document.getElementById('btn-1p').addEventListener('click', () => {
