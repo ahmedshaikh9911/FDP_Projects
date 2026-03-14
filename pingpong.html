@@ -316,7 +316,7 @@
     </div>
 
     <canvas id="pong"></canvas>
-    <div id="hint">DRAG BOTTOM PADDLE</div>
+    <div id="hint">DRAG PADDLE  ·  ← → ARROW KEYS</div>
   </div>
 
 </div>
@@ -414,9 +414,8 @@ let paddle = {
 let ball = { x: 0.5, y: 0.5, vx: 0, vy: 0, speed: 0 };
 let ballTrail = [];
 
-// Touch / mouse state
-let drag = { active: false, startX: 0, paddleStartX: 0, which: null };
-let p2drag = { active: false, startX: 0, paddleStartX: 0 };
+// Touch / keyboard state
+const keys = { left: false, right: false };
 
 // ── CANVAS RESIZE ─────────────────────────────────────────────
 function resize() {
@@ -434,7 +433,6 @@ function initGame(twoPlayer) {
   updateScoreUI();
   document.getElementById('start-screen').classList.add('hidden');
   document.getElementById('win-screen').classList.add('hidden');
-  document.getElementById('hint').textContent = twoPlayer ? 'DRAG BOTTOM / TOP PADDLE' : 'DRAG BOTTOM PADDLE';
   gameActive = true;
 }
 
@@ -692,99 +690,95 @@ function roundRect(ctx, x, y, w, h, r) {
 
 // ── GAME LOOP ─────────────────────────────────────────────────
 function loop() {
+  applyKeyboard();
   aiMove();
   updateBall();
   draw();
   requestAnimationFrame(loop);
 }
 
-// ── TOUCH / MOUSE INPUT ───────────────────────────────────────
-function getTouchX(e) {
-  if (e.touches) return e.touches[0].clientX;
-  return e.clientX;
-}
+// ── INPUT ─────────────────────────────────────────────────────
 
-function getCanvasRelX(clientX) {
-  const rect = canvas.getBoundingClientRect();
-  return clientX - rect.left;
-}
+// Arrow keys
+const KEYBOARD_SPEED = 7; // px per frame
 
-function isNearPaddle(canvasX, p) {
-  const pw = canvas.width * PADDLE_W_RATIO;
-  const margin = pw * 1.5;
-  return canvasX >= paddle[p].x - margin && canvasX <= paddle[p].x + pw + margin;
-}
-
-function isInPaddleZoneY(e, p) {
-  const rect = canvas.getBoundingClientRect();
-  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-  const cy = clientY - rect.top;
-  const ph = canvas.height * PADDLE_H_RATIO;
-  if (p === 'p1') return cy > canvas.height * 0.65;
-  if (p === 'p2') return cy < canvas.height * 0.35;
-  return false;
-}
-
-canvas.addEventListener('touchstart', e => {
-  e.preventDefault();
-  ensureAudio();
-  const cx = getCanvasRelX(e.touches[0].clientX);
-
-  // P1 zone
-  if (isInPaddleZoneY(e, 'p1') || !isTwoPlayer) {
-    if (!isTwoPlayer || isInPaddleZoneY(e, 'p1')) {
-      drag.active = true;
-      drag.startX = cx;
-      drag.paddleStartX = paddle.p1.x;
-      drag.which = 'p1';
-    }
-  }
-  // P2 zone (2P only)
-  if (isTwoPlayer && isInPaddleZoneY(e, 'p2')) {
-    p2drag.active = true;
-    p2drag.startX = cx;
-    p2drag.paddleStartX = paddle.p2.x;
-  }
-}, { passive: false });
-
-canvas.addEventListener('touchmove', e => {
-  e.preventDefault();
-  for (let t of e.touches) {
-    const cx = getCanvasRelX(t.clientX);
-    const cy = t.clientY - canvas.getBoundingClientRect().top;
-
-    if (drag.active && cy > canvas.height * 0.5) {
-      paddle.p1.x = drag.paddleStartX + (cx - drag.startX);
-      clampPaddle('p1');
-    }
-    if (p2drag.active && cy < canvas.height * 0.5) {
-      paddle.p2.x = p2drag.paddleStartX + (cx - p2drag.startX);
-      clampPaddle('p2');
-    }
-  }
-}, { passive: false });
-
-canvas.addEventListener('touchend', e => {
-  if (e.touches.length === 0) { drag.active = false; p2drag.active = false; }
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowLeft')  { keys.left  = true; e.preventDefault(); }
+  if (e.key === 'ArrowRight') { keys.right = true; e.preventDefault(); }
+});
+document.addEventListener('keyup', e => {
+  if (e.key === 'ArrowLeft')  keys.left  = false;
+  if (e.key === 'ArrowRight') keys.right = false;
 });
 
-// Mouse support
-let mouseDown = false;
+function applyKeyboard() {
+  if (keys.left)  { paddle.p1.x -= KEYBOARD_SPEED; clampPaddle('p1'); }
+  if (keys.right) { paddle.p1.x += KEYBOARD_SPEED; clampPaddle('p1'); }
+}
+
+// ── TOUCH ─────────────────────────────────────────────────────
+// Each touch is tracked by its identifier.
+// In 1P: any touch controls P1.
+// In 2P: touches in bottom half → P1, top half → P2.
+const activeTouches = {}; // id → { lastX, player }
+
+function getCanvasRelX(clientX) {
+  return clientX - canvas.getBoundingClientRect().left;
+}
+function getCanvasRelY(clientY) {
+  return clientY - canvas.getBoundingClientRect().top;
+}
+
+document.addEventListener('touchstart', e => {
+  e.preventDefault();
+  ensureAudio();
+  for (const t of e.changedTouches) {
+    const cx = getCanvasRelX(t.clientX);
+    const cy = getCanvasRelY(t.clientY);
+    let player = 'p1';
+    if (isTwoPlayer && cy < canvas.getBoundingClientRect().height / 2) {
+      player = 'p2';
+    }
+    activeTouches[t.identifier] = { lastX: cx, player };
+  }
+}, { passive: false });
+
+document.addEventListener('touchmove', e => {
+  e.preventDefault();
+  for (const t of e.changedTouches) {
+    const info = activeTouches[t.identifier];
+    if (!info) continue;
+    const cx = getCanvasRelX(t.clientX);
+    const delta = cx - info.lastX;
+    info.lastX = cx;
+    paddle[info.player].x += delta;
+    clampPaddle(info.player);
+  }
+}, { passive: false });
+
+document.addEventListener('touchend', e => {
+  for (const t of e.changedTouches) delete activeTouches[t.identifier];
+});
+document.addEventListener('touchcancel', e => {
+  for (const t of e.changedTouches) delete activeTouches[t.identifier];
+});
+
+// ── MOUSE ─────────────────────────────────────────────────────
+let mouseDown = false, lastMouseX = 0;
 canvas.addEventListener('mousedown', e => {
   ensureAudio();
   mouseDown = true;
-  drag.active = true;
-  drag.startX = getCanvasRelX(e.clientX);
-  drag.paddleStartX = paddle.p1.x;
+  lastMouseX = getCanvasRelX(e.clientX);
 });
-canvas.addEventListener('mousemove', e => {
+window.addEventListener('mousemove', e => {
   if (!mouseDown) return;
   const cx = getCanvasRelX(e.clientX);
-  paddle.p1.x = drag.paddleStartX + (cx - drag.startX);
+  paddle.p1.x += cx - lastMouseX;
+  lastMouseX = cx;
   clampPaddle('p1');
 });
-canvas.addEventListener('mouseup', () => { mouseDown = false; drag.active = false; });
-canvas.addEventListener('mouseleave', () => { mouseDown = false; drag.active = false; });
+window.addEventListener('mouseup',    () => { mouseDown = false; });
+window.addEventListener('mouseleave', () => { mouseDown = false; });
 
 // ── BUTTONS ───────────────────────────────────────────────────
 document.getElementById('btn-1p').addEventListener('click', () => {
